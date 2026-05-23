@@ -93,43 +93,44 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 PLOT_TICKERS = ["sp500", "baa"]
 plot_idx     = [TICKERS.index(t) for t in PLOT_TICKERS]
 
-def plot_marginals(split, real_data, filename, title):
-    fig, axes = plt.subplots(1, len(PLOT_TICKERS), figsize=(5 * len(PLOT_TICKERS), 4))
-    for col, (ticker, idx) in enumerate(zip(PLOT_TICKERS, plot_idx)):
-        ax    = axes[col]
+# ── Marginal distributions: rows=assets, cols=train|test ──────────────────────
+fig, axes = plt.subplots(len(PLOT_TICKERS), 2, figsize=(12, 4 * len(PLOT_TICKERS)))
+
+for row, (ticker, idx) in enumerate(zip(PLOT_TICKERS, plot_idx)):
+    for col, (split, real_data) in enumerate([("train", train_std), ("test", test_std)]):
+        ax    = axes[row, col]
         r     = real_data[:, idx]
         g     = gen_np[:, idx]
         x_min = min(r.min(), g.min()) - 0.3
         x_max = max(r.max(), g.max()) + 0.3
         x     = np.linspace(x_min, x_max, 500)
         for vals, color, label in [
-            (r, "darkorange", f"Real {split} (n={len(r)})"),
-            (g, "steelblue",  f"Generated  (n={len(g)})"),
+            (r, "darkorange", f"Real (n={len(r)})"),
+            (g, "steelblue",  f"Generated (n={len(g)})"),
         ]:
             kde = gaussian_kde(vals, bw_method="silverman")
             ax.plot(x, kde(x), linewidth=2, color=color, label=label)
             ax.fill_between(x, kde(x), alpha=0.12, color=color)
-        ax.set_title(ticker.upper(), fontsize=12, fontweight="bold")
+        split_label = "In-Sample (Train)" if split == "train" else "Out-of-Sample (Test)"
+        ax.set_title(f"{ticker.upper()} — {split_label}", fontsize=12, fontweight="bold")
         ax.set_xlabel("Standardized Return", fontsize=11)
         ax.set_ylabel("Density", fontsize=11)
         ax.legend(fontsize=9)
         ax.grid(True, alpha=0.3)
-    fig.suptitle(title, fontsize=13, fontweight="bold")
-    fig.tight_layout()
-    plt.savefig(os.path.join(RESULTS_DIR, filename), dpi=150, bbox_inches="tight")
-    plt.close()
 
-plot_marginals("train", train_std, "unconditional_marginals_train.png",
-               "Unconditional Generation — In-Sample (Train)")
-plot_marginals("test",  test_std,  "unconditional_marginals_test.png",
-               "Unconditional Generation — Out-of-Sample (Test)")
+fig.suptitle("Unconditional Generation — Marginal Distributions", fontsize=13, fontweight="bold")
+fig.tight_layout()
+plt.savefig(os.path.join(RESULTS_DIR, "unconditional_marginals.png"), dpi=150, bbox_inches="tight")
+plt.close()
 
-# ── Joint pairwise distributions ──────────────────────────────────────────────
+# ── Joint distributions: left=train, right=test ────────────────────────────────
 i, j   = plot_idx[0], plot_idx[1]
 t1, t2 = PLOT_TICKERS[0], PLOT_TICKERS[1]
 
-def plot_joint(split, real_data, filename, title):
-    fig, ax = plt.subplots(figsize=(6, 5))
+fig2, axes2 = plt.subplots(1, 2, figsize=(12, 5))
+
+for col, (split, real_data) in enumerate([("train", train_std), ("test", test_std)]):
+    ax = axes2[col]
     real_t1, real_t2 = real_data[:, i], real_data[:, j]
     gen_t1,  gen_t2  = gen_np[:, i],    gen_np[:, j]
     x_min = min(real_t1.min(), gen_t1.min()) - 0.5
@@ -144,19 +145,17 @@ def plot_joint(split, real_data, filename, title):
     ax.contour( xx, yy, zz_real, levels=10, colors="darkorange", linewidths=0.8, alpha=0.8)
     ax.contourf(xx, yy, zz_gen,  levels=10, cmap="Blues",   alpha=0.5)
     ax.contour( xx, yy, zz_gen,  levels=10, colors="steelblue",  linewidths=0.8, alpha=0.8)
-    ax.legend(handles=[
-        Patch(color="darkorange", alpha=0.7, label=f"Real {split} (n={len(real_t1)})"),
-        Patch(color="steelblue",  alpha=0.7, label=f"Generated  (n={len(gen_t1)})"),
-    ], fontsize=9, loc="upper right")
-    ax.set_title(title, fontsize=11, fontweight="bold")
+    split_label = "In-Sample (Train)" if split == "train" else "Out-of-Sample (Test)"
+    ax.set_title(f"Joint {t1.upper()} × {t2.upper()} — {split_label}", fontsize=11, fontweight="bold")
     ax.set_xlabel(f"{t1.upper()} Standardized Return", fontsize=10)
     ax.set_ylabel(f"{t2.upper()} Standardized Return", fontsize=10)
+    ax.legend(handles=[
+        Patch(color="darkorange", alpha=0.7, label=f"Real (n={len(real_t1)})"),
+        Patch(color="steelblue",  alpha=0.7, label=f"Generated (n={len(gen_t1)})"),
+    ], fontsize=9, loc="upper right")
     ax.grid(True, alpha=0.3)
-    fig.tight_layout()
-    plt.savefig(os.path.join(RESULTS_DIR, filename), dpi=150, bbox_inches="tight")
-    plt.close()
 
-plot_joint("train", train_std, "unconditional_joint_train.png",
-           f"Joint {t1.upper()} × {t2.upper()} — In-Sample (Train)")
-plot_joint("test",  test_std,  "unconditional_joint_test.png",
-           f"Joint {t1.upper()} × {t2.upper()} — Out-of-Sample (Test)")
+fig2.suptitle("Unconditional Generation — Joint Distribution", fontsize=13, fontweight="bold")
+fig2.tight_layout()
+plt.savefig(os.path.join(RESULTS_DIR, "unconditional_joint.png"), dpi=150, bbox_inches="tight")
+plt.close()
