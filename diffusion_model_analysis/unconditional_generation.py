@@ -5,15 +5,20 @@ import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
 from itertools import combinations
 from matplotlib.patches import Patch
-from torch.utils.data import TensorDataset
 from ema_pytorch import EMA
+import argparse
 import os
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-from diffusion_factor_model.diffusion_factor_model import Unet, GaussianDiffusion, Trainer
+from diffusion_factor_model.diffusion_factor_model import Unet, GaussianDiffusion
 import config.config as cfg
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--ckpt", type=str, required=True,
+                    help="Path to checkpoint file, e.g. model_results/.../model-epoch-600.pt")
+args = parser.parse_args()
 
 # ── Settings ──────────────────────────────────────────────────────────────────
 TICKERS       = ["unemp", "sp500", "baa"]
@@ -57,45 +62,16 @@ diffusion = GaussianDiffusion(
     auto_normalize=cfg.AUTO_NORMALIZE,
 )
 
-os.makedirs(CKPT_DIR, exist_ok=True)
+# ── Load checkpoint ───────────────────────────────────────────────────────────
+if not os.path.exists(args.ckpt):
+    raise FileNotFoundError(f"Checkpoint not found: {args.ckpt}\nRun train.py first.")
 
-# ── Train or load ─────────────────────────────────────────────────────────────
-if os.path.exists(CKPT_PATH):
-    print(f"Loading checkpoint: {CKPT_PATH}")
-    ckpt = torch.load(CKPT_PATH, map_location=cfg.DEVICE, weights_only=True)
-    model.load_state_dict(ckpt["model"])
-    ema = EMA(diffusion, beta=cfg.EMA_DECAY, update_every=4)
-    ema.load_state_dict(ckpt["ema"])
-    diffusion_for_sampling = ema.ema_model.to(cfg.DEVICE)
-else:
-    print("No checkpoint found — training from scratch...")
-    data_tensor = torch.from_numpy(train_std).float().reshape(-1, 1, HEIGHT, WIDTH)
-    dataset     = TensorDataset(data_tensor)
-
-    trainer = Trainer(
-        diffusion,
-        dataset,
-        train_batch_size=min(cfg.BATCH_SIZE, len(dataset)),
-        train_lr=cfg.LEARNING_RATE,
-        train_epochs=cfg.EPOCHS,
-        adamw_weight_decay=cfg.WEIGHT_DECAY,
-        cosine_scheduler=cfg.USE_COSINE_SCHEDULER,
-        warm_up=cfg.USE_WARM_UP,
-        warmup_iters=cfg.WARMUP_STEPS,
-        T_0=cfg.COSINE_CYCLE_LENGTH,
-        T_mult=cfg.T_MULT,
-        eta_min=cfg.COSINE_LR_MIN,
-        cosine_steps=cfg.COSINE_STEPS,
-        gradient_accumulate_every=cfg.GRADIENT_ACCUMULATION,
-        ema_decay=cfg.EMA_DECAY,
-        split_batches=cfg.SPLIT_BATCHES,
-        save_and_sample_every=cfg.EPOCHS,  # save once at the end
-        results_folder=CKPT_DIR,
-        param_path="",
-        amp=cfg.USE_AMP,
-    )
-    trainer.train()
-    diffusion_for_sampling = trainer.ema.ema_model
+print(f"Loading checkpoint: {args.ckpt}")
+ckpt = torch.load(args.ckpt, map_location=cfg.DEVICE, weights_only=True)
+model.load_state_dict(ckpt["model"])
+ema = EMA(diffusion, beta=cfg.EMA_DECAY, update_every=4)
+ema.load_state_dict(ckpt["ema"])
+diffusion_for_sampling = ema.ema_model.to(cfg.DEVICE)
 
 # ── Generate ──────────────────────────────────────────────────────────────────
 print(f"Generating {N_SAMPLES} unconditional samples...")
