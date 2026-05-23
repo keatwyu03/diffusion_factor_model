@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
-from itertools import combinations
 from matplotlib.patches import Patch
 from ema_pytorch import EMA
 import argparse
@@ -89,87 +88,75 @@ for i, ticker in enumerate(TICKERS):
     print(f"  real train q[1,5,50,95,99]: {np.quantile(train_std[:, i], [.01,.05,.5,.95,.99]).round(3)}")
     print(f"  generated  q[1,5,50,95,99]: {np.quantile(gen_np[:, i],   [.01,.05,.5,.95,.99]).round(3)}")
 
-# ── Marginal distributions ────────────────────────────────────────────────────
+# ── Plot settings ─────────────────────────────────────────────────────────────
 os.makedirs(RESULTS_DIR, exist_ok=True)
+PLOT_TICKERS = ["sp500", "baa"]
+plot_idx     = [TICKERS.index(t) for t in PLOT_TICKERS]
 
-fig, axes = plt.subplots(1, len(TICKERS), figsize=(5 * len(TICKERS), 4))
+def plot_marginals(split, real_data, filename, title):
+    fig, axes = plt.subplots(1, len(PLOT_TICKERS), figsize=(5 * len(PLOT_TICKERS), 4))
+    for col, (ticker, idx) in enumerate(zip(PLOT_TICKERS, plot_idx)):
+        ax    = axes[col]
+        r     = real_data[:, idx]
+        g     = gen_np[:, idx]
+        x_min = min(r.min(), g.min()) - 0.3
+        x_max = max(r.max(), g.max()) + 0.3
+        x     = np.linspace(x_min, x_max, 500)
+        for vals, color, label in [
+            (r, "darkorange", f"Real {split} (n={len(r)})"),
+            (g, "steelblue",  f"Generated  (n={len(g)})"),
+        ]:
+            kde = gaussian_kde(vals, bw_method="silverman")
+            ax.plot(x, kde(x), linewidth=2, color=color, label=label)
+            ax.fill_between(x, kde(x), alpha=0.12, color=color)
+        ax.set_title(ticker.upper(), fontsize=12, fontweight="bold")
+        ax.set_xlabel("Standardized Return", fontsize=11)
+        ax.set_ylabel("Density", fontsize=11)
+        ax.legend(fontsize=9)
+        ax.grid(True, alpha=0.3)
+    fig.suptitle(title, fontsize=13, fontweight="bold")
+    fig.tight_layout()
+    plt.savefig(os.path.join(RESULTS_DIR, filename), dpi=150, bbox_inches="tight")
+    plt.close()
 
-for col, ticker in enumerate(TICKERS):
-    ax      = axes[col]
-    r_train = train_std[:, col]
-    r_test  = test_std[:, col]
-    g       = gen_np[:, col]
-
-    x_min = min(r_train.min(), r_test.min(), g.min()) - 0.3
-    x_max = max(r_train.max(), r_test.max(), g.max()) + 0.3
-    x     = np.linspace(x_min, x_max, 500)
-
-    for vals, color, label in [
-        (r_train, "darkorange", f"Real train (n={len(r_train)})"),
-        (r_test,  "tomato",     f"Real test  (n={len(r_test)})"),
-        (g,       "steelblue",  f"Generated  (n={len(g)})"),
-    ]:
-        kde = gaussian_kde(vals, bw_method="silverman")
-        ax.plot(x, kde(x), linewidth=2, color=color, label=label)
-        ax.fill_between(x, kde(x), alpha=0.12, color=color)
-
-    ax.set_title(ticker.upper(), fontsize=12, fontweight="bold")
-    ax.set_xlabel("Standardized Return", fontsize=11)
-    ax.set_ylabel("Density", fontsize=11)
-    ax.legend(fontsize=9)
-    ax.grid(True, alpha=0.3)
-
-fig.suptitle("Unconditional Generation — Marginal Distributions", fontsize=13, fontweight="bold")
-fig.tight_layout()
-plt.savefig(os.path.join(RESULTS_DIR, "unconditional_marginals.png"), dpi=150, bbox_inches="tight")
-plt.show()
+plot_marginals("train", train_std, "unconditional_marginals_train.png",
+               "Unconditional Generation — In-Sample (Train)")
+plot_marginals("test",  test_std,  "unconditional_marginals_test.png",
+               "Unconditional Generation — Out-of-Sample (Test)")
 
 # ── Joint pairwise distributions ──────────────────────────────────────────────
-pairs   = list(combinations(range(len(TICKERS)), 2))
-n_pairs = len(pairs)
+i, j   = plot_idx[0], plot_idx[1]
+t1, t2 = PLOT_TICKERS[0], PLOT_TICKERS[1]
 
-fig2, axes2 = plt.subplots(n_pairs, 2, figsize=(14, 6 * n_pairs))
-if n_pairs == 1:
-    axes2 = axes2[np.newaxis, :]
+def plot_joint(split, real_data, filename, title):
+    fig, ax = plt.subplots(figsize=(6, 5))
+    real_t1, real_t2 = real_data[:, i], real_data[:, j]
+    gen_t1,  gen_t2  = gen_np[:, i],    gen_np[:, j]
+    x_min = min(real_t1.min(), gen_t1.min()) - 0.5
+    x_max = max(real_t1.max(), gen_t1.max()) + 0.5
+    y_min = min(real_t2.min(), gen_t2.min()) - 0.5
+    y_max = max(real_t2.max(), gen_t2.max()) + 0.5
+    xx, yy = np.meshgrid(np.linspace(x_min, x_max, 80), np.linspace(y_min, y_max, 80))
+    grid   = np.vstack([xx.ravel(), yy.ravel()])
+    zz_real = gaussian_kde(np.vstack([real_t1, real_t2]), bw_method="silverman")(grid).reshape(xx.shape)
+    zz_gen  = gaussian_kde(np.vstack([gen_t1,  gen_t2]),  bw_method="silverman")(grid).reshape(xx.shape)
+    ax.contourf(xx, yy, zz_real, levels=10, cmap="Oranges", alpha=0.5)
+    ax.contour( xx, yy, zz_real, levels=10, colors="darkorange", linewidths=0.8, alpha=0.8)
+    ax.contourf(xx, yy, zz_gen,  levels=10, cmap="Blues",   alpha=0.5)
+    ax.contour( xx, yy, zz_gen,  levels=10, colors="steelblue",  linewidths=0.8, alpha=0.8)
+    ax.legend(handles=[
+        Patch(color="darkorange", alpha=0.7, label=f"Real {split} (n={len(real_t1)})"),
+        Patch(color="steelblue",  alpha=0.7, label=f"Generated  (n={len(gen_t1)})"),
+    ], fontsize=9, loc="upper right")
+    ax.set_title(title, fontsize=11, fontweight="bold")
+    ax.set_xlabel(f"{t1.upper()} Standardized Return", fontsize=10)
+    ax.set_ylabel(f"{t2.upper()} Standardized Return", fontsize=10)
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    plt.savefig(os.path.join(RESULTS_DIR, filename), dpi=150, bbox_inches="tight")
+    plt.close()
 
-real_splits = {"train": train_std, "test": test_std}
-
-for row, (i, j) in enumerate(pairs):
-    t1, t2 = TICKERS[i], TICKERS[j]
-    for col, split in enumerate(["train", "test"]):
-        ax = axes2[row, col]
-        real = real_splits[split]
-
-        real_t1, real_t2 = real[:, i],   real[:, j]
-        gen_t1,  gen_t2  = gen_np[:, i], gen_np[:, j]
-
-        x_min = min(real_t1.min(), gen_t1.min()) - 0.5
-        x_max = max(real_t1.max(), gen_t1.max()) + 0.5
-        y_min = min(real_t2.min(), gen_t2.min()) - 0.5
-        y_max = max(real_t2.max(), gen_t2.max()) + 0.5
-
-        xx, yy = np.meshgrid(np.linspace(x_min, x_max, 80), np.linspace(y_min, y_max, 80))
-        grid   = np.vstack([xx.ravel(), yy.ravel()])
-
-        zz_real = gaussian_kde(np.vstack([real_t1, real_t2]), bw_method="silverman")(grid).reshape(xx.shape)
-        zz_gen  = gaussian_kde(np.vstack([gen_t1,  gen_t2]),  bw_method="silverman")(grid).reshape(xx.shape)
-
-        ax.contourf(xx, yy, zz_real, levels=10, cmap="Oranges", alpha=0.5)
-        ax.contour( xx, yy, zz_real, levels=10, colors="darkorange", linewidths=0.8, alpha=0.8)
-        ax.contourf(xx, yy, zz_gen,  levels=10, cmap="Blues",   alpha=0.5)
-        ax.contour( xx, yy, zz_gen,  levels=10, colors="steelblue",  linewidths=0.8, alpha=0.8)
-
-        split_label = "In-Sample (Train)" if split == "train" else "Out-of-Sample (Test)"
-        ax.set_title(f"Joint {t1.upper()} × {t2.upper()} — {split_label}", fontsize=11)
-        ax.set_xlabel(f"{t1.upper()} Standardized Return", fontsize=10)
-        ax.set_ylabel(f"{t2.upper()} Standardized Return", fontsize=10)
-        ax.legend(handles=[
-            Patch(color="darkorange", alpha=0.7, label=f"Real {split} (n={len(real_t1)})"),
-            Patch(color="steelblue",  alpha=0.7, label=f"Generated  (n={len(gen_t1)})"),
-        ], fontsize=9, loc="upper right")
-        ax.grid(True, alpha=0.3)
-
-fig2.suptitle("Unconditional Generation — Joint Pairwise Distributions", fontsize=13, fontweight="bold")
-fig2.tight_layout()
-plt.savefig(os.path.join(RESULTS_DIR, "unconditional_joint.png"), dpi=150, bbox_inches="tight")
-plt.show()
+plot_joint("train", train_std, "unconditional_joint_train.png",
+           f"Joint {t1.upper()} × {t2.upper()} — In-Sample (Train)")
+plot_joint("test",  test_std,  "unconditional_joint_test.png",
+           f"Joint {t1.upper()} × {t2.upper()} — Out-of-Sample (Test)")
