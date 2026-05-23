@@ -56,13 +56,13 @@ BETA_SCHEDULE = 'cosine'
 AUTO_NORMALIZE = False
 
 # Training parameters
-BATCH_SIZE = 32
+BATCH_SIZE = 50
 LEARNING_RATE = 1e-4
 EPOCHS = 600
 WEIGHT_DECAY = 0.01
 USE_COSINE_SCHEDULER = True
 USE_WARM_UP = True
-WARMUP_STEPS = 20
+WARMUP_STEPS = 50
 COSINE_CYCLE_LENGTH = 400  # T_0 (initial cycle length)
 T_MULT = 1                 # T_mult for scheduler
 COSINE_STEPS = 400         # Cosine annealing steps (same as T_0 by default)
@@ -70,7 +70,7 @@ COSINE_LR_MIN = 1e-05      # ETA_MIN
 GRADIENT_ACCUMULATION = 1
 EMA_DECAY = 0.999
 SPLIT_BATCHES = False
-SAVE_INTERVAL = 1000       # Save checkpoint every N epochs
+SAVE_INTERVAL = 600       # Save checkpoint every N epochs
 
 # Sampling parameters
 SAMPLE_BATCHES = 64       # Number of batches to sample
