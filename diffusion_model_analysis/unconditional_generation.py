@@ -68,7 +68,7 @@ if not os.path.exists(args.ckpt):
 
 print(f"Loading checkpoint: {args.ckpt}")
 ckpt = torch.load(args.ckpt, map_location=cfg.DEVICE, weights_only=True)
-model.load_state_dict(ckpt["model"])
+diffusion.load_state_dict(ckpt["model"])
 ema = EMA(diffusion, beta=cfg.EMA_DECAY, update_every=4)
 ema.load_state_dict(ckpt["ema"])
 diffusion_for_sampling = ema.ema_model.to(cfg.DEVICE)
