@@ -17,6 +17,19 @@ os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(MODELS_DIR, exist_ok=True)
 os.makedirs(SAMPLES_DIR, exist_ok=True)
 
+# ── Macro data settings ───────────────────────────────────────────────────────
+TICKERS   = ["unemp", "sp500", "baa"]
+CSV_PATH  = os.path.join(PROJECT_ROOT, "explore", "macro_data_new.csv")
+TEST_DAYS = 3000
+N_SAMPLES = 5000   # unconditional samples to generate for analysis
+
+# Output directories for macro experiment
+CKPT_DIR    = os.path.join(PROJECT_ROOT, "checkpoints", "dfm_macro")
+RESULTS_DIR = os.path.join(PROJECT_ROOT, "results")
+
+os.makedirs(CKPT_DIR, exist_ok=True)
+os.makedirs(RESULTS_DIR, exist_ok=True)
+
 # Experiment naming
 EXP_PREFIX = "dfm"  # Prefix for experiment IDs
 
