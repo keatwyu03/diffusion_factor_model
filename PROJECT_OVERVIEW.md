@@ -2,7 +2,7 @@
 
 ## What It Does
 
-Trains a DDPM-style diffusion model (2D U-Net) on macro financial cross-sections to learn the joint distribution of `(unemp, sp500, baa)` returns. After training, generates synthetic samples and evaluates how well the learned distribution matches real data via marginal KDE plots and pairwise joint density contours.
+Trains a DDPM-style diffusion model (2D U-Net) on macro financial cross-sections to learn the joint distribution of `(unemp, sp500, baa)` returns. Supports both **unconditional generation** (sample from the full learned distribution) and **conditional generation** (sample only from regions where unemployment exceeds a threshold, via Doob's h-transform / classifier guidance).
 
 ---
 
@@ -22,7 +22,7 @@ diffusion_factor_model/
 │   └── ft_portfolio_eval.py               # Factor timing portfolios (PCA, POET, RP-PCA)
 ├── diffusion_model_analysis/
 │   ├── unconditional_generation.py        # Load checkpoint → generate → plot marginals + joints
-│   └── conditional_generation.py          # (placeholder for conditional generation)
+│   └── conditional_generation.py          # Plots and analysis for conditional samples
 ├── explore/
 │   ├── macro_data_new.csv                 # Main dataset (FRED + yfinance)
 │   └── import_data.py                     # Script that originally built macro_data_new.csv
@@ -30,7 +30,9 @@ diffusion_factor_model/
 │   └── training_data_example.npy          # Example simulation data (num_samples, H, W)
 ├── empirical_analysis_data/
 │   └── training_data_example.npy          # Example empirical data (num_samples, assets)
-├── train.py                               # Main training script — run this first
+├── train.py                               # Step 1: train diffusion model + H-function
+├── h_function.py                          # HFunctionMLP + HFunctionTrainer
+├── conditional_sampling.py                # Step 2: load checkpoints → generate conditional samples
 ├── requirements.txt
 └── setup.py
 ```
@@ -150,6 +152,15 @@ Each checkpoint contains:
 - `optimizer` — AdamW state
 - `ema` — EMA model weights (used for sampling/inference)
 
+The H-function checkpoint is saved alongside as `model_results/<exp_id>/hfunction.pt`.
+
+### Skipping H-function training
+```bash
+python train.py --data_path explore/macro_data.npy --skip_hfunction
+# or load a pre-trained one
+python train.py --data_path explore/macro_data.npy --h_ckpt path/to/hfunction.pt
+```
+
 ---
 
 ## Learning Rate Schedule
@@ -201,21 +212,57 @@ LR
 | `EMA_DECAY` | `0.999` | EMA smoothing factor |
 | `SAVE_INTERVAL` | `100` | Save checkpoint every N epochs |
 | `AUTO_NORMALIZE` | `False` | Data is pre-standardized — skip internal normalization |
+| `H_EMBED_DIM` | `128` | Time embedding dimension for H-function MLP |
+| `H_EPOCHS` | `1000` | H-function training epochs |
+| `H_LEARNING_RATE` | `1e-4` | H-function optimizer LR |
+| `H_WEIGHT_DECAY` | `1e-4` | H-function AdamW weight decay |
+| `H_BATCH_SIZE` | `2048` | H-function mini-batch size |
+| `H_EVENT_ASSET_IDX` | `0` | Column index of the conditioned asset (unemp = 0) |
+| `H_EVENT_THRESHOLD` | `1.2` | Standardized threshold: event fires if unemp > 1.2 |
+
+---
+
+## H-Function (`h_function.py`)
+
+Implements Doob's h-transform for conditional generation. The H-function learns `P(unemp > threshold | x_t, t)` — the probability that a noisy sample `x_t` at diffusion step `t` came from a clean sample where unemployment was above the threshold.
+
+### Architecture (`HFunctionMLP`)
+- Input: flatten `(B, 1, 3, 1)` → `(B, 3)` concatenated with a Gaussian Fourier time embedding
+- MLP: `(3 + 128) → 128 → 64 → 1 → Sigmoid`
+- Output: scalar probability in `[0, 1]`
+
+### Training (`HFunctionTrainer`)
+For each training step:
+1. Sample a random batch of clean `x_0` from training data
+2. Sample a random diffusion timestep `t ∈ {0, ..., 199}`
+3. Corrupt `x_0` → `x_t` via `q_sample` (forward diffusion)
+4. Label = 1 if `x_0[unemp] > threshold`, else 0
+5. Train H to predict that label from `(x_t, t)` via MSE loss
 
 ---
 
 ## Analysis
 
 ### Unconditional Generation
-After training, run:
 ```bash
-python diffusion_model_analysis/unconditional_generation.py
+python diffusion_model_analysis/unconditional_generation.py --ckpt path/to/model-epoch-600.pt
 ```
 
-Loads the checkpoint from `CKPT_DIR`, generates `N_SAMPLES` synthetic daily cross-sections, and produces two figures in `results/`:
+Generates `N_SAMPLES` synthetic daily cross-sections and produces two figures in `results/`:
 
-1. **`unconditional_marginals.png`** — KDE per asset (real train, real test, generated). X-axis: standardized return. Y-axis: density.
-2. **`unconditional_joint.png`** — Pairwise joint density contours for all 3 asset pairs (real vs. generated).
+1. **`unconditional_marginals.png`** — KDE per asset (real train, real test, generated)
+2. **`unconditional_joint.png`** — Pairwise joint density contours (real vs. generated)
+
+### Conditional Generation
+```bash
+python conditional_sampling.py \
+  --ckpt model_results/.../model-epoch-600.pt \
+  --h_ckpt model_results/.../hfunction.pt \
+  --guidance_scale 1.0 \
+  --n_samples 2000
+```
+
+Runs DDPM reverse diffusion with classifier guidance. At each denoising step, adds `guidance_scale * ∇ log h(x_t, t)` to the posterior mean, steering samples toward high-unemployment regions. Produces **`results/conditional_marginals.png`** comparing the conditional distribution to real training data.
 
 ---
 

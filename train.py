@@ -12,6 +12,7 @@ import time
 
 from diffusion_factor_model.diffusion_factor_model import Unet, GaussianDiffusion, Trainer
 import config.config as config
+from h_function import HFunctionTrainer
 
 def get_dim_mults_for_size(height, width):
     """
@@ -39,7 +40,7 @@ def get_dim_mults_for_size(height, width):
     else:
         return config.DIM_MULTS_MINIMAL # Minimal case
 
-def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, save_timesteps=None):
+def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, save_timesteps=None, skip_hfunction=False, h_ckpt=None):
     """
     Train the diffusion model using a specific data file
     
@@ -193,7 +194,37 @@ def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, s
     # Train model
     print(f"Starting training for {epochs} epochs...")
     trainer.train()
-    
+
+    # ==================== H-Function Training ====================
+    print("\n" + "=" * 60)
+    print("H-Function Training")
+    print("=" * 60)
+
+    h_trainer = HFunctionTrainer(
+        diffusion=diffusion,
+        asset_dim=height * width,
+        embed_dim=config.H_EMBED_DIM,
+        event_asset_idx=config.H_EVENT_ASSET_IDX,
+        event_threshold=config.H_EVENT_THRESHOLD,
+        device=config.DEVICE,
+    )
+
+    if skip_hfunction:
+        print("Skipping H-function training.")
+    elif h_ckpt is not None and os.path.exists(h_ckpt):
+        h_trainer.load(h_ckpt)
+    else:
+        h_trainer.train(
+            train_data=data,
+            n_epochs=config.H_EPOCHS,
+            batch_size=config.H_BATCH_SIZE,
+            learning_rate=config.H_LEARNING_RATE,
+            weight_decay=config.H_WEIGHT_DECAY,
+            scheduler_patience=config.H_SCHEDULER_PATIENCE,
+            scheduler_factor=config.H_SCHEDULER_FACTOR,
+        )
+        h_trainer.save(os.path.join(model_dir, "hfunction.pt"))
+
     # Generate samples
     print("Generating samples...")
     sample_batches = config.SAMPLE_BATCHES
@@ -238,7 +269,11 @@ if __name__ == "__main__":
                       help="Number of epochs to train (None = use config value)")
     parser.add_argument("--save_timesteps", type=int, nargs='+', default=None,
                       help="Specific timesteps to save during sampling for early stopping evaluation (e.g., --save_timesteps 100 200 500)")
-    
+    parser.add_argument("--skip_hfunction", action="store_true",
+                      help="Skip H-function training")
+    parser.add_argument("--h_ckpt", type=str, default=None,
+                      help="Path to a pre-trained H-function checkpoint to load instead of training")
+
     args = parser.parse_args()
-    
-    train_model(args.data_path, args.seed, args.num_samples, args.gpu, args.epochs, args.save_timesteps) 
+
+    train_model(args.data_path, args.seed, args.num_samples, args.gpu, args.epochs, args.save_timesteps, args.skip_hfunction, args.h_ckpt) 

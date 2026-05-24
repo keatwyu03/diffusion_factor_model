@@ -82,6 +82,17 @@ SAVE_TIMESTEPS = [20]     # Specific timesteps to save for early stopping evalua
 # Mixed precision settings
 USE_AMP = True            # Mixed precision training
 
+# H-function parameters
+H_EMBED_DIM         = 128
+H_EPOCHS            = 1000
+H_LEARNING_RATE     = 1e-4
+H_WEIGHT_DECAY      = 1e-4
+H_BATCH_SIZE        = 2048
+H_SCHEDULER_PATIENCE = 50
+H_SCHEDULER_FACTOR  = 0.5
+H_EVENT_ASSET_IDX   = 0     # unemp is column 0
+H_EVENT_THRESHOLD   = 1.2   # standardized unemp > 1.2
+
 # Data parameters
 TRAIN_SAMPLES = 2**11     # Number of samples to use for training
 
