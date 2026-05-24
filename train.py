@@ -40,7 +40,7 @@ def get_dim_mults_for_size(height, width):
     else:
         return config.DIM_MULTS_MINIMAL # Minimal case
 
-def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, save_timesteps=None, skip_hfunction=False, h_ckpt=None):
+def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, save_timesteps=None, skip_hfunction=False, h_ckpt=None, skip_diffusion_training=False, diffusion_ckpt=None):
     """
     Train the diffusion model using a specific data file
     
@@ -192,8 +192,14 @@ def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, s
     print("Trainer initialized")
     
     # Train model
-    print(f"Starting training for {epochs} epochs...")
-    trainer.train()
+    if skip_diffusion_training:
+        if diffusion_ckpt is None or not os.path.exists(diffusion_ckpt):
+            raise ValueError("--diffusion_ckpt must point to a valid checkpoint when --skip_diffusion_training is set")
+        print(f"Skipping diffusion training. Loading checkpoint from: {diffusion_ckpt}")
+        trainer.load(diffusion_ckpt)
+    else:
+        print(f"Starting training for {epochs} epochs...")
+        trainer.train()
 
     # ==================== H-Function Training ====================
     print("\n" + "=" * 60)
@@ -280,7 +286,11 @@ if __name__ == "__main__":
                       help="Skip H-function training")
     parser.add_argument("--h_ckpt", type=str, default=None,
                       help="Path to a pre-trained H-function checkpoint to load instead of training")
+    parser.add_argument("--skip_diffusion_training", action="store_true",
+                      help="Skip diffusion model training and load from --diffusion_ckpt instead")
+    parser.add_argument("--diffusion_ckpt", type=str, default=None,
+                      help="Path to a pre-trained diffusion checkpoint to load (required with --skip_diffusion_training)")
 
     args = parser.parse_args()
 
-    train_model(args.data_path, args.seed, args.num_samples, args.gpu, args.epochs, args.save_timesteps, args.skip_hfunction, args.h_ckpt) 
+    train_model(args.data_path, args.seed, args.num_samples, args.gpu, args.epochs, args.save_timesteps, args.skip_hfunction, args.h_ckpt, args.skip_diffusion_training, args.diffusion_ckpt) 

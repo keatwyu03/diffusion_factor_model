@@ -107,7 +107,7 @@ class HFunctionTrainer:
 
         print("Starting H-function training...")
         for epoch in tqdm(range(n_epochs), desc="H-Function Training"):
-            idx = torch.randint(0, N, (batch_size,), device=self.device)
+            idx = torch.randint(0, N, (batch_size,))  # keep on CPU to index train_data
             x_0 = train_data[idx].to(self.device)  # (B, 1, 3, 1)
 
             t = torch.randint(0, self.diffusion.num_timesteps, (batch_size,), device=self.device).long()
