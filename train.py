@@ -14,6 +14,15 @@ from diffusion_factor_model.diffusion_factor_model import Unet, GaussianDiffusio
 import config.config as config
 from h_function import HFunctionTrainer
 
+def find_latest_checkpoint():
+    """Return the most recently modified model-epoch-*.pt file under MODELS_DIR."""
+    import glob
+    pattern = os.path.join(config.MODELS_DIR, "**", "model-epoch-*.pt")
+    ckpts = glob.glob(pattern, recursive=True)
+    if not ckpts:
+        return None
+    return max(ckpts, key=os.path.getmtime)
+
 def get_dim_mults_for_size(height, width):
     """
     Determine appropriate dimension multipliers for UNet based on input dimensions.
@@ -193,8 +202,10 @@ def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, s
     
     # Train model
     if skip_diffusion_training:
+        if diffusion_ckpt is None:
+            diffusion_ckpt = find_latest_checkpoint()
         if diffusion_ckpt is None or not os.path.exists(diffusion_ckpt):
-            raise ValueError("--diffusion_ckpt must point to a valid checkpoint when --skip_diffusion_training is set")
+            raise ValueError("No checkpoint found. Train a model first or pass --diffusion_ckpt.")
         print(f"Skipping diffusion training. Loading checkpoint from: {diffusion_ckpt}")
         trainer.load(diffusion_ckpt)
     else:
