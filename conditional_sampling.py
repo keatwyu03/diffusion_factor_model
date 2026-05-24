@@ -48,11 +48,19 @@ if args.ckpt is None or args.h_ckpt is None:
     if args.ckpt is None:
         candidates = glob.glob(os.path.join(model_dir, "model-epoch-*.pt"))
         if not candidates:
-            raise FileNotFoundError(f"No model checkpoints found in {model_dir}")
-        args.ckpt = max(candidates, key=lambda p: int(p.split("model-epoch-")[1].replace(".pt", "")))
+            # Fall back to searching all of model_results/
+            candidates = glob.glob(os.path.join(ROOT, "model_results", "**", "model-epoch-*.pt"), recursive=True)
+        if not candidates:
+            raise FileNotFoundError(f"No model checkpoints found in {model_dir} or model_results/")
+        args.ckpt = max(candidates, key=os.path.getmtime)
 
     if args.h_ckpt is None:
-        args.h_ckpt = os.path.join(model_dir, "hfunction.pt")
+        h_candidate = os.path.join(model_dir, "hfunction.pt")
+        if not os.path.exists(h_candidate):
+            # Fall back to most recently modified hfunction.pt across all runs
+            all_h = glob.glob(os.path.join(ROOT, "model_results", "**", "hfunction.pt"), recursive=True)
+            h_candidate = max(all_h, key=os.path.getmtime) if all_h else h_candidate
+        args.h_ckpt = h_candidate
 
 print(f"Diffusion checkpoint : {args.ckpt}")
 print(f"H-function checkpoint: {args.h_ckpt}")
