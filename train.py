@@ -249,10 +249,17 @@ def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, s
     del trainer, model, diffusion, data, dataset
     gc.collect()
     
+    # Write model_dir to latest_run.txt so conditional_sampling.py can find it automatically
+    latest_run_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "latest_run.txt")
+    with open(latest_run_path, "w") as f:
+        f.write(model_dir)
+
     print(f"Training and sampling complete for {exp_id}")
     print(f"Models saved to: {model_dir}")
     print(f"Samples saved to: {sample_dir}")
-    
+    print(f"\nTo generate conditional samples run:")
+    print(f"  python conditional_sampling.py")
+
     return model_dir, sample_dir
 
 if __name__ == "__main__":

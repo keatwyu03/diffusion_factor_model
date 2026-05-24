@@ -12,6 +12,7 @@ from scipy.stats import gaussian_kde
 from matplotlib.patches import Patch
 from ema_pytorch import EMA
 import argparse
+import glob
 import os
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -22,10 +23,10 @@ from h_function import HFunctionMLP
 
 # ── Args ───────────────────────────────────────────────────────────────────────
 parser = argparse.ArgumentParser()
-parser.add_argument("--ckpt", type=str, required=True,
-                    help="Path to diffusion model checkpoint (from train.py)")
-parser.add_argument("--h_ckpt", type=str, required=True,
-                    help="Path to H-function checkpoint (from train.py)")
+parser.add_argument("--ckpt", type=str, default=None,
+                    help="Path to diffusion model checkpoint. If omitted, reads latest_run.txt.")
+parser.add_argument("--h_ckpt", type=str, default=None,
+                    help="Path to H-function checkpoint. If omitted, reads latest_run.txt.")
 parser.add_argument("--guidance_scale", type=float, default=1.0,
                     help="Guidance strength")
 parser.add_argument("--n_samples", type=int, default=2000,
@@ -33,6 +34,28 @@ parser.add_argument("--n_samples", type=int, default=2000,
 parser.add_argument("--event_threshold", type=float, default=cfg.H_EVENT_THRESHOLD,
                     help="Standardized unemp threshold for the event")
 args = parser.parse_args()
+
+# ── Resolve checkpoint paths from latest_run.txt if not provided ───────────────
+if args.ckpt is None or args.h_ckpt is None:
+    latest_run_path = os.path.join(ROOT, "latest_run.txt")
+    if not os.path.exists(latest_run_path):
+        raise FileNotFoundError(
+            "No --ckpt provided and latest_run.txt not found. Run train.py first."
+        )
+    with open(latest_run_path) as f:
+        model_dir = f.read().strip()
+
+    if args.ckpt is None:
+        candidates = glob.glob(os.path.join(model_dir, "model-epoch-*.pt"))
+        if not candidates:
+            raise FileNotFoundError(f"No model checkpoints found in {model_dir}")
+        args.ckpt = max(candidates, key=lambda p: int(p.split("model-epoch-")[1].replace(".pt", "")))
+
+    if args.h_ckpt is None:
+        args.h_ckpt = os.path.join(model_dir, "hfunction.pt")
+
+print(f"Diffusion checkpoint : {args.ckpt}")
+print(f"H-function checkpoint: {args.h_ckpt}")
 
 # ── Settings ───────────────────────────────────────────────────────────────────
 TICKERS       = ["unemp", "sp500", "baa"]
