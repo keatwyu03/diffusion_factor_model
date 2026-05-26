@@ -92,15 +92,27 @@ class HFunctionTrainer:
         scheduler_patience: int = 50,
         scheduler_factor: float = 0.5,
         use_wandb: bool = False,
+        test_data: torch.Tensor = None,
     ) -> None:
         """
         Args:
             train_data: clean training samples, shape (N, 1, 3, 1), standardized
+            test_data:  clean test samples, same shape (optional)
         """
         if use_wandb:
             import wandb
 
         N = len(train_data)
+        unemp_all = train_data[:, 0, self.event_asset_idx, 0]
+        n_events  = (unemp_all > self.event_threshold).sum().item()
+        print(f"Training set size: {N} | Events (unemp > {self.event_threshold}): {n_events} ({100 * n_events / N:.1f}%)")
+
+        if test_data is not None:
+            N_test = len(test_data)
+            unemp_test = test_data[:, 0, self.event_asset_idx, 0]
+            n_events_test = (unemp_test > self.event_threshold).sum().item()
+            print(f"Test set size:     {N_test} | Events (unemp > {self.event_threshold}): {n_events_test} ({100 * n_events_test / N_test:.1f}%)")
+
         optimizer = optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=weight_decay)
         scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=scheduler_factor, patience=scheduler_patience)
         loss_fn = nn.MSELoss()

@@ -90,8 +90,11 @@ def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, s
     if test_days is None:
         test_days = config.TEST_DAYS
     if test_days > 0:
+        test_np = data_np[-test_days:]
         data_np = data_np[:-test_days]
         print(f"Holding out last {test_days} rows as test set. Training on {len(data_np)} samples.")
+    else:
+        test_np = None
 
     # Limit number of samples if specified
     if num_samples is not None and num_samples < data_np.shape[0]:
@@ -151,6 +154,13 @@ def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, s
     data_std = data.std(dim=0, keepdim=True)[0]
     data = (data - data_mean) / data_std
     dataset = TensorDataset(data)
+
+    # Prepare standardized test tensor for event reporting
+    if test_np is not None:
+        test_data = torch.from_numpy(test_np).float().reshape(-1, 1, height, width)
+        test_data = (test_data - data_mean) / data_std
+    else:
+        test_data = None
     
     # Calculate latent dimension (total number of features)
     latent_dim = height * width
@@ -255,6 +265,7 @@ def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, s
             weight_decay=config.H_WEIGHT_DECAY,
             scheduler_patience=config.H_SCHEDULER_PATIENCE,
             scheduler_factor=config.H_SCHEDULER_FACTOR,
+            test_data=test_data,
         )
         h_trainer.save(os.path.join(model_dir, "hfunction.pt"))
 
