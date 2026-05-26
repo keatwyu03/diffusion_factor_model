@@ -49,18 +49,19 @@ def get_dim_mults_for_size(height, width):
     else:
         return config.DIM_MULTS_MINIMAL # Minimal case
 
-def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, save_timesteps=None, skip_hfunction=False, h_ckpt=None, skip_diffusion_training=False, diffusion_ckpt=None):
+def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, save_timesteps=None, skip_hfunction=False, h_ckpt=None, skip_diffusion_training=False, diffusion_ckpt=None, test_days=None):
     """
     Train the diffusion model using a specific data file
-    
+
     Args:
         data_path: Path to the data file to use for training
         seed: Random seed for reproducibility
         num_samples: Number of training samples to use (None = use all)
         gpu_id: GPU ID to use
         epochs: Number of epochs to train (None = use config.EPOCHS)
-        save_timesteps: List of specific timesteps to save during sampling for early stopping evaluation 
+        save_timesteps: List of specific timesteps to save during sampling for early stopping evaluation
                        (None = use config.SAVE_TIMESTEPS, which defaults to None meaning save only final result)
+        test_days: Number of days to hold out as test set (None = use config.TEST_DAYS)
     """
     # Set GPU
     os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
@@ -84,13 +85,21 @@ def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, s
     data_np = np.load(data_path)
     data_shape = data_np.shape
     print(f"Loaded data with shape: {data_shape}, dtype: {data_np.dtype}")
-    
+
+    # Hold out test set
+    if test_days is None:
+        test_days = config.TEST_DAYS
+    if test_days > 0:
+        data_np = data_np[:-test_days]
+        print(f"Holding out last {test_days} rows as test set. Training on {len(data_np)} samples.")
+
     # Limit number of samples if specified
-    if num_samples is not None and num_samples < data_shape[0]:
+    if num_samples is not None and num_samples < data_np.shape[0]:
         data_np = data_np[:num_samples]
         print(f"Using {num_samples} samples from the data")
     
     # Determine data dimensions and reshape strategy
+    data_shape = data_np.shape
     if len(data_shape) == 2:
         # data (samples, features) - reshape to 2D format
         samples, features = data_shape
@@ -212,6 +221,13 @@ def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, s
         print(f"Starting training for {epochs} epochs...")
         trainer.train()
 
+        loss_path = os.path.join(model_dir, config.LOSS_FILENAME)
+        with open(loss_path, "w") as f:
+            f.write("epoch,loss\n")
+            for ep, loss in trainer.train_losses:
+                f.write(f"{ep},{loss}\n")
+        print(f"Loss curve saved to: {loss_path}")
+
     # ==================== H-Function Training ====================
     print("\n" + "=" * 60)
     print("H-Function Training")
@@ -301,7 +317,9 @@ if __name__ == "__main__":
                       help="Skip diffusion model training and load from --diffusion_ckpt instead")
     parser.add_argument("--diffusion_ckpt", type=str, default=None,
                       help="Path to a pre-trained diffusion checkpoint to load (required with --skip_diffusion_training)")
+    parser.add_argument("--test_days", type=int, default=None,
+                      help="Rows to hold out as test set (default: config.TEST_DAYS)")
 
     args = parser.parse_args()
 
-    train_model(args.data_path, args.seed, args.num_samples, args.gpu, args.epochs, args.save_timesteps, args.skip_hfunction, args.h_ckpt, args.skip_diffusion_training, args.diffusion_ckpt) 
+    train_model(args.data_path, args.seed, args.num_samples, args.gpu, args.epochs, args.save_timesteps, args.skip_hfunction, args.h_ckpt, args.skip_diffusion_training, args.diffusion_ckpt, args.test_days) 

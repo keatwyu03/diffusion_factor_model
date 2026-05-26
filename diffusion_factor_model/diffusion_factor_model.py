@@ -1168,6 +1168,8 @@ class Trainer:
         self.num_fid_samples = num_fid_samples
         self.save_timesteps = save_timesteps  # Store timesteps for early stopping evaluation
 
+        self.train_losses = []  # list of (epoch, avg_loss)
+
         # Model checkpoint and result saving
         self.results_folder = Path(results_folder)
         os.makedirs(self.results_folder, exist_ok=True)
@@ -1252,6 +1254,7 @@ class Trainer:
                 # Log metrics at the end of the epoch
                 avg_train_loss = total_loss / num_batches
 
+                self.train_losses.append((epoch + 1, avg_train_loss))
                 self.logger.add_scalar('Train/Average Loss', avg_train_loss, epoch)
                 self.logger.flush()
 

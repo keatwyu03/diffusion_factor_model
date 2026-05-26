@@ -22,7 +22,7 @@ args = parser.parse_args()
 # ── Settings ──────────────────────────────────────────────────────────────────
 TICKERS       = ["unemp", "sp500", "baa"]
 CSV_PATH      = os.path.join(ROOT, "explore", "macro_data_new.csv")
-TEST_DAYS     = 3000
+TEST_DAYS     = cfg.TEST_DAYS
 N_SAMPLES     = 5000
 HEIGHT, WIDTH = 3, 1        # (N, 3 assets) → (N, 1, 3, 1) for 2D UNet
 DIM_MULTS     = (1,)        # min_dim=1 → DIM_MULTS_MINIMAL

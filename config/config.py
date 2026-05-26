@@ -96,6 +96,9 @@ H_EVENT_THRESHOLD   = 1.2   # standardized unemp > 1.2
 # Data parameters
 TRAIN_SAMPLES = 2**11     # Number of samples to use for training
 
+# Output file names
+LOSS_FILENAME = "train_losses.csv"
+
 # File naming and paths
 def get_experiment_id(seed=None, num_samples=None):
     """Generate a unique experiment identifier"""
