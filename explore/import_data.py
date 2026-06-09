@@ -28,7 +28,7 @@ baa_log = np.log(data['baa'] / data['baa'].shift(1))
 unemp_monthly = data['unemp']
 unemp_flag = (unemp_monthly.diff(1).abs() >= unemployment_threshold).astype(float).fillna(0.0)
 
-tickers = ["AAPL", "AMZN", "TSLA", "MSFT", "META"]
+tickers = ["AAPL", "ORCL", "MSFT", "IBM"]
 df = yf.download(tickers, start = "1950-01-01", auto_adjust=True)["Close"]
 log_ret = np.log(df / df.shift(1)).dropna()
 
@@ -53,10 +53,9 @@ df_out = pd.DataFrame({
     "baa_flag":   df["baa_flag"],
     "cpi":        df["cpi"],
     "AAPL":       log_ret["AAPL"],
-    "AMZN":       log_ret["AMZN"],
-    "TSLA":       log_ret["TSLA"],
+    "ORCL":       log_ret["ORCL"],
     "MSFT":       log_ret["MSFT"],
-    "META":       log_ret["META"],
+    "IBM":       log_ret["IBM"],
 })
 
 df_out = df_out.dropna()
@@ -67,3 +66,10 @@ print(len(df[df['unemp_flag'] == 1]))
 print(len(df[df['baa_flag'] == 1]))
 print(len(df))
 print(df['unemp'].std())
+
+for tick in tickers: 
+    print(tick, len(df[tick]))
+    print(df[tick].isnull().sum())
+
+print(len(df_out))
+print(df_out.isnull().sum())
