@@ -92,12 +92,29 @@ with torch.no_grad():
 gen_np = uncond.reshape(N_SAMPLES, len(TICKERS)).numpy()  # (N, 3)
 
 # ── Diagnostics ───────────────────────────────────────────────────────────────
+os.makedirs(RESULTS_DIR, exist_ok=True)
+rows = []
 for i, ticker in enumerate(TICKERS):
-    print(f"\n{ticker.upper()}")
-    print(f"  real train — mean: {train_std[:, i].mean():.3f}  std: {train_std[:, i].std():.3f}")
-    print(f"  generated  — mean: {gen_np[:, i].mean():.3f}  std: {gen_np[:, i].std():.3f}")
-    print(f"  real train q[1,5,50,95,99]: {np.quantile(train_std[:, i], [.01,.05,.5,.95,.99]).round(3)}")
-    print(f"  generated  q[1,5,50,95,99]: {np.quantile(gen_np[:, i],   [.01,.05,.5,.95,.99]).round(3)}")
+    qs_r = np.quantile(train_std[:, i], [.01,.05,.5,.95,.99]).round(3)
+    qs_g = np.quantile(gen_np[:, i],    [.01,.05,.5,.95,.99]).round(3)
+    rows.append([ticker.upper(), "real train",
+                 f"{train_std[:, i].mean():.3f}", f"{train_std[:, i].std():.3f}",
+                 str(qs_r)])
+    rows.append(["", "generated",
+                 f"{gen_np[:, i].mean():.3f}", f"{gen_np[:, i].std():.3f}",
+                 str(qs_g)])
+
+col_labels = ["Asset", "Split", "Mean", "Std", "q[1,5,50,95,99]"]
+fig_d, ax_d = plt.subplots(figsize=(14, 0.4 * len(rows) + 1.5))
+ax_d.axis("off")
+tbl = ax_d.table(cellText=rows, colLabels=col_labels, loc="center", cellLoc="left")
+tbl.auto_set_font_size(False)
+tbl.set_fontsize(9)
+tbl.auto_set_column_width(col=list(range(len(col_labels))))
+fig_d.suptitle("Unconditional Generation — Diagnostics", fontsize=12, fontweight="bold")
+fig_d.tight_layout()
+plt.savefig(os.path.join(RESULTS_DIR, "unconditional_diagnostics.png"), dpi=150, bbox_inches="tight")
+plt.close()
 
 # ── Plot settings ─────────────────────────────────────────────────────────────
 os.makedirs(RESULTS_DIR, exist_ok=True)

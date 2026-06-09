@@ -127,11 +127,30 @@ gen_np = cond.reshape(args.n_samples, len(TICKERS)).detach().cpu().numpy()
 # ── Diagnostics ────────────────────────────────────────────────────────────────
 event_rate_gen   = (gen_np[:, 0] > args.event_threshold).mean()
 event_rate_train = (train_std[:, 0] > args.event_threshold).mean()
-print(f"\nEvent rate — generated: {event_rate_gen:.3f}  |  real train: {event_rate_train:.3f}")
+
+rows = [["Event rate", f"generated: {event_rate_gen:.3f}", f"real train: {event_rate_train:.3f}", "", ""]]
 for i, ticker in enumerate(TICKERS):
-    print(f"\n{ticker.upper()}")
-    print(f"  real train  — mean: {train_std[:, i].mean():.3f}  std: {train_std[:, i].std():.3f}")
-    print(f"  conditional — mean: {gen_np[:, i].mean():.3f}  std: {gen_np[:, i].std():.3f}")
+    qs_r = np.quantile(train_std[:, i], [.01,.05,.5,.95,.99]).round(3)
+    qs_g = np.quantile(gen_np[:, i],    [.01,.05,.5,.95,.99]).round(3)
+    rows.append([ticker.upper(), "real train",
+                 f"{train_std[:, i].mean():.3f}", f"{train_std[:, i].std():.3f}", str(qs_r)])
+    rows.append(["", "conditional",
+                 f"{gen_np[:, i].mean():.3f}", f"{gen_np[:, i].std():.3f}", str(qs_g)])
+
+col_labels = ["Asset", "Split", "Mean", "Std", "q[1,5,50,95,99]"]
+fig_d, ax_d = plt.subplots(figsize=(14, 0.4 * len(rows) + 1.5))
+ax_d.axis("off")
+tbl = ax_d.table(cellText=rows, colLabels=col_labels, loc="center", cellLoc="left")
+tbl.auto_set_font_size(False)
+tbl.set_fontsize(9)
+tbl.auto_set_column_width(col=list(range(len(col_labels))))
+fig_d.suptitle(
+    f"Conditional Generation (unemp > {args.event_threshold}, guidance={args.guidance_scale}) — Diagnostics",
+    fontsize=12, fontweight="bold"
+)
+fig_d.tight_layout()
+plt.savefig(os.path.join(RESULTS_DIR, "conditional_diagnostics.png"), dpi=150, bbox_inches="tight")
+plt.close()
 
 # ── Plot: marginals — one plot per asset, cols=train|test ─────────────────────
 plot_idx = [TICKERS.index(t) for t in PLOT_TICKERS]
