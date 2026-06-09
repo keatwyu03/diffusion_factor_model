@@ -45,12 +45,15 @@ print(f"Diffusion checkpoint : {args.ckpt}")
 print(f"H-function checkpoint: {args.h_ckpt}")
 
 # ── Settings ───────────────────────────────────────────────────────────────────
-TICKERS      = ["unemp", "sp500", "baa"]
-PLOT_TICKERS = ["sp500", "baa"]
-CSV_PATH     = os.path.join(ROOT, "explore", "macro_data_new.csv")
-TEST_DAYS    = 3000
-HEIGHT, WIDTH = 3, 1
-DIM_MULTS    = (1,)
+TICKERS      = cfg.TICKERS
+PLOT_TICKERS = [t for t in TICKERS if t != TICKERS[cfg.H_EVENT_ASSET_IDX]]
+CSV_PATH     = cfg.CSV_PATH
+TEST_DAYS    = cfg.TEST_DAYS
+HEIGHT, WIDTH = len(TICKERS), 1
+min_dim = min(HEIGHT, WIDTH)
+DIM_MULTS = (cfg.DIM_MULTS_LARGE  if min_dim >= 32 else cfg.DIM_MULTS_MEDIUM if min_dim >= 16
+        else cfg.DIM_MULTS_SMALL  if min_dim >= 8  else cfg.DIM_MULTS_TINY   if min_dim >= 4
+        else cfg.DIM_MULTS_MINIMAL)
 RESULTS_DIR  = os.path.join(ROOT, "results")
 os.makedirs(RESULTS_DIR, exist_ok=True)
 

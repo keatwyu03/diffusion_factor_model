@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import torch
 import yfinance as yf
+import os
 
 fred = Fred(api_key = '6dac8927ae66be817978bd55e16a9241')
 sp500 = yf.download('^GSPC', start = '1950-01-01')['Close'].squeeze()
@@ -27,7 +28,6 @@ baa_log = np.log(data['baa'] / data['baa'].shift(1))
 unemp_monthly = data['unemp']
 unemp_flag = (unemp_monthly.diff(1).abs() >= unemployment_threshold).astype(float).fillna(0.0)
 
-
 tickers = ["AAPL", "AMZN", "TSLA", "MSFT", "META"]
 df = yf.download(tickers, start = "1950-01-01", auto_adjust=True)["Close"]
 log_ret = np.log(df / df.shift(1)).dropna()
@@ -39,6 +39,9 @@ baa_flag = (baa_log.abs() >= baa_threshold).astype(float).fillna(0.0)
 
 df['unemp'] = unemp_monthly.reindex(df.index, method = 'ffill')
 df['unemp_flag'] = unemp_flag.reindex(df.index, method = 'ffill')
+
+df["cpi"] = data["cpi"].reindex(df.index, method = 'ffill')
+
 df['baa'] = baa_log.reindex(df.index, method = 'ffill')
 df['baa_flag'] = baa_flag.reindex(df.index, method = 'ffill')
 
@@ -48,6 +51,7 @@ df_out = pd.DataFrame({
     "unemp_flag": df["unemp_flag"],
     "baa":        df["baa"],
     "baa_flag":   df["baa_flag"],
+    "cpi":        df["cpi"],
     "AAPL":       log_ret["AAPL"],
     "AMZN":       log_ret["AMZN"],
     "TSLA":       log_ret["TSLA"],
