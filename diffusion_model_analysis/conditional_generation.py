@@ -93,7 +93,7 @@ ema.load_state_dict(ckpt["ema"])
 diffusion_model = ema.ema_model.to(cfg.DEVICE)
 diffusion_model.eval()
 
-h_model = HFunctionMLP(asset_dim=3, embed_dim=cfg.H_EMBED_DIM).to(cfg.DEVICE)
+h_model = HFunctionMLP(asset_dim=len(TICKERS), embed_dim=cfg.H_EMBED_DIM).to(cfg.DEVICE)
 h_model.load_state_dict(torch.load(args.h_ckpt, map_location=cfg.DEVICE))
 h_model.eval()
 
