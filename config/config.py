@@ -19,6 +19,7 @@ os.makedirs(SAMPLES_DIR, exist_ok=True)
 
 # ── Macro data settings ───────────────────────────────────────────────────────
 TICKERS   = ["unemp", "baa", "AAPL", "ORCL", "MSFT", "IBM"]
+COND_EVENT = "unemp"
 CSV_PATH  = os.path.join(PROJECT_ROOT, "explore", "macro_data_new.csv")
 TEST_DAYS = 3000
 N_SAMPLES = 5000   # unconditional samples to generate for analysis

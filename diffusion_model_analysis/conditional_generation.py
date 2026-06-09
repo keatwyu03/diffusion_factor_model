@@ -145,7 +145,7 @@ tbl.auto_set_font_size(False)
 tbl.set_fontsize(9)
 tbl.auto_set_column_width(col=list(range(len(col_labels))))
 fig_d.suptitle(
-    f"Conditional Generation (unemp > {args.event_threshold}, guidance={args.guidance_scale}) — Diagnostics",
+    f"Conditional Generation (cfg.COND_EVENT > {args.event_threshold}, guidance={args.guidance_scale}) — Diagnostics",
     fontsize=12, fontweight="bold"
 )
 fig_d.tight_layout()
@@ -178,7 +178,7 @@ for ticker, idx in zip(PLOT_TICKERS, plot_idx):
         ax.legend(fontsize=9)
         ax.grid(True, alpha=0.3)
     fig.suptitle(
-        f"Conditional Generation (unemp > {args.event_threshold}, guidance={args.guidance_scale}) — {ticker.upper()}",
+        f"Conditional Generation (cfg.COND_EVENT > {args.event_threshold}, guidance={args.guidance_scale}) — {ticker.upper()}",
         fontsize=13, fontweight="bold"
     )
     fig.tight_layout()
