@@ -70,7 +70,7 @@ COSINE_LR_MIN = 1e-05      # ETA_MIN
 GRADIENT_ACCUMULATION = 1
 EMA_DECAY = 0.999
 SPLIT_BATCHES = False
-SAVE_INTERVAL = 600       # Save checkpoint every N epochs
+SAVE_INTERVAL = 50       # Save checkpoint every N epochs
 
 # Sampling parameters
 SAMPLE_BATCHES = 64       # Number of batches to sample
