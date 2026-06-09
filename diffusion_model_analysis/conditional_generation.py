@@ -152,13 +152,14 @@ fig_d.tight_layout()
 plt.savefig(os.path.join(RESULTS_DIR, "conditional_diagnostics.png"), dpi=150, bbox_inches="tight")
 plt.close()
 
-# ── Plot: marginals — one plot per asset, cols=train|test ─────────────────────
+# ── Plot: marginals — rows=assets, cols=train|test ────────────────────────────
 plot_idx = [TICKERS.index(t) for t in PLOT_TICKERS]
 
-for ticker, idx in zip(PLOT_TICKERS, plot_idx):
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+fig, axes = plt.subplots(len(PLOT_TICKERS), 2, figsize=(12, 4 * len(PLOT_TICKERS)))
+
+for row, (ticker, idx) in enumerate(zip(PLOT_TICKERS, plot_idx)):
     for col, (split, real_data) in enumerate([("train", train_std), ("test", test_std)]):
-        ax    = axes[col]
+        ax    = axes[row, col]
         r     = real_data[:, idx]
         g     = gen_np[:, idx]
         x_min = min(r.min(), g.min()) - 0.3
@@ -177,12 +178,13 @@ for ticker, idx in zip(PLOT_TICKERS, plot_idx):
         ax.set_ylabel("Density", fontsize=11)
         ax.legend(fontsize=9)
         ax.grid(True, alpha=0.3)
-    fig.suptitle(
-        f"Conditional Generation (cfg.COND_EVENT > {args.event_threshold}, guidance={args.guidance_scale}) — {ticker.upper()}",
-        fontsize=13, fontweight="bold"
-    )
-    fig.tight_layout()
-    out_marginals = os.path.join(RESULTS_DIR, f"conditional_marginal_{ticker}.png")
-    plt.savefig(out_marginals, dpi=150, bbox_inches="tight")
-    plt.close()
-    print(f"Saved {out_marginals}")
+
+fig.suptitle(
+    f"Conditional Generation (unemp > {args.event_threshold}, guidance={args.guidance_scale}) — Marginal Distributions",
+    fontsize=13, fontweight="bold"
+)
+fig.tight_layout()
+out_marginals = os.path.join(RESULTS_DIR, "conditional_marginals.png")
+plt.savefig(out_marginals, dpi=150, bbox_inches="tight")
+plt.close()
+print(f"Saved {out_marginals}")
