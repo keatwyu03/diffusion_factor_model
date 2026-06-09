@@ -180,7 +180,7 @@ for row, (ticker, idx) in enumerate(zip(PLOT_TICKERS, plot_idx)):
         ax.grid(True, alpha=0.3)
 
 fig.suptitle(
-    f"Conditional Generation (unemp > {args.event_threshold}, guidance={args.guidance_scale}) — Marginal Distributions",
+    f"Conditional Generation (CFG.COND_EVENT > {args.event_threshold}, guidance={args.guidance_scale}) — Marginal Distributions",
     fontsize=13, fontweight="bold"
 )
 fig.tight_layout()

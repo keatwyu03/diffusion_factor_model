@@ -18,8 +18,10 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 os.makedirs(SAMPLES_DIR, exist_ok=True)
 
 # ── Macro data settings ───────────────────────────────────────────────────────
-TICKERS   = ["unemp", "baa", "AAPL", "ORCL", "MSFT", "IBM"]
-COND_EVENT = "unemp"
+TICKERS   = ["cpi", "baa", "AAPL", "ORCL", "MSFT", "IBM"]
+COND_EVENT = "cpi"
+H_EVENT_ASSET_IDX   = 0     # unemp is column 0
+H_EVENT_THRESHOLD   = 2.0   # |unemp change| > value
 CSV_PATH  = os.path.join(PROJECT_ROOT, "explore", "macro_data_new.csv")
 TEST_DAYS = 3000
 N_SAMPLES = 5000   # unconditional samples to generate for analysis
@@ -91,8 +93,7 @@ H_WEIGHT_DECAY      = 1e-4
 H_BATCH_SIZE        = 2048
 H_SCHEDULER_PATIENCE = 50
 H_SCHEDULER_FACTOR  = 0.5
-H_EVENT_ASSET_IDX   = 0     # unemp is column 0
-H_EVENT_THRESHOLD   = 1.2   # standardized unemp > 1.2
+
 
 # Data parameters
 TRAIN_SAMPLES = 2**11     # Number of samples to use for training
