@@ -53,20 +53,20 @@ DIM_MULTS_TINY = (1, 2)            # For inputs where min_dim >= 4
 DIM_MULTS_MINIMAL = (1,)           # For very small inputs
 
 # Diffusion parameters
-TIMESTEPS = 200
+TIMESTEPS = 500
 OBJECTIVE = 'pred_noise'
 BETA_SCHEDULE = 'cosine'
 AUTO_NORMALIZE = False
 
 # Training parameters
 BATCH_SIZE = 50
-LEARNING_RATE = 1e-4
+LEARNING_RATE = 0.05
 EPOCHS = 200
-WEIGHT_DECAY = 0.01
+WEIGHT_DECAY = 1e-4
 USE_COSINE_SCHEDULER = True
 USE_WARM_UP = True
 WARMUP_STEPS = 50
-COSINE_CYCLE_LENGTH = 400  # T_0 (initial cycle length)
+COSINE_CYCLE_LENGTH = 150  # T_0 (initial cycle length)
 T_MULT = 1                 # T_mult for scheduler
 COSINE_STEPS = 400         # Cosine annealing steps (same as T_0 by default)
 COSINE_LR_MIN = 1e-05      # ETA_MIN
@@ -96,7 +96,7 @@ H_SCHEDULER_FACTOR  = 0.5
 
 
 # Data parameters
-TRAIN_SAMPLES = 2**11     # Number of samples to use for training
+TRAIN_SAMPLES = 2**12     # Number of samples to use for training
 
 # Output file names
 LOSS_FILENAME = "train_losses.csv"
