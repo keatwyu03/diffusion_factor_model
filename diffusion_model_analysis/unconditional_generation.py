@@ -104,11 +104,12 @@ os.makedirs(RESULTS_DIR, exist_ok=True)
 PLOT_TICKERS = [t for t in TICKERS if t != TICKERS[cfg.H_EVENT_ASSET_IDX]]
 plot_idx     = [TICKERS.index(t) for t in PLOT_TICKERS]
 
-# ── Marginal distributions: one plot per asset, cols=train|test ───────────────
-for ticker, idx in zip(PLOT_TICKERS, plot_idx):
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
+# ── Marginal distributions: rows=assets, cols=train|test ──────────────────────
+fig, axes = plt.subplots(len(PLOT_TICKERS), 2, figsize=(12, 4 * len(PLOT_TICKERS)))
+
+for row, (ticker, idx) in enumerate(zip(PLOT_TICKERS, plot_idx)):
     for col, (split, real_data) in enumerate([("train", train_std), ("test", test_std)]):
-        ax    = axes[col]
+        ax    = axes[row, col]
         r     = real_data[:, idx]
         g     = gen_np[:, idx]
         x_min = min(r.min(), g.min()) - 0.3
@@ -127,7 +128,8 @@ for ticker, idx in zip(PLOT_TICKERS, plot_idx):
         ax.set_ylabel("Density", fontsize=11)
         ax.legend(fontsize=9)
         ax.grid(True, alpha=0.3)
-    fig.suptitle(f"Unconditional Generation — {ticker.upper()} Marginal", fontsize=13, fontweight="bold")
-    fig.tight_layout()
-    plt.savefig(os.path.join(RESULTS_DIR, f"unconditional_marginal_{ticker}.png"), dpi=150, bbox_inches="tight")
-    plt.close()
+
+fig.suptitle("Unconditional Generation — Marginal Distributions", fontsize=13, fontweight="bold")
+fig.tight_layout()
+plt.savefig(os.path.join(RESULTS_DIR, "unconditional_marginals.png"), dpi=150, bbox_inches="tight")
+plt.close()
