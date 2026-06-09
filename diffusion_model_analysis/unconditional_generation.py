@@ -6,6 +6,7 @@ from scipy.stats import gaussian_kde
 from matplotlib.patches import Patch
 from ema_pytorch import EMA
 import argparse
+import glob
 import os
 import sys
 
@@ -15,19 +16,29 @@ from diffusion_factor_model.diffusion_factor_model import Unet, GaussianDiffusio
 import config.config as cfg
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--ckpt", type=str, required=True,
-                    help="Path to checkpoint file, e.g. model_results/.../model-epoch-600.pt")
+parser.add_argument("--ckpt", type=str, default=None,
+                    help="Path to checkpoint file. Auto-resolves to latest if omitted.")
 args = parser.parse_args()
 
+if args.ckpt is None:
+    hits = glob.glob(os.path.join(ROOT, "model_results", "**", "model-epoch-*.pt"), recursive=True)
+    if not hits:
+        raise FileNotFoundError("No checkpoint found in model_results/. Run train.py first.")
+    args.ckpt = max(hits, key=os.path.getmtime)
+
+print(f"Using checkpoint: {args.ckpt}")
+
 # ── Settings ──────────────────────────────────────────────────────────────────
-TICKERS       = ["unemp", "sp500", "baa"]
-CSV_PATH      = os.path.join(ROOT, "explore", "macro_data_new.csv")
+TICKERS       = cfg.TICKERS
+CSV_PATH      = cfg.CSV_PATH
 TEST_DAYS     = cfg.TEST_DAYS
 N_SAMPLES     = 5000
-HEIGHT, WIDTH = 3, 1        # (N, 3 assets) → (N, 1, 3, 1) for 2D UNet
-DIM_MULTS     = (1,)        # min_dim=1 → DIM_MULTS_MINIMAL
-CKPT_DIR      = os.path.join(ROOT, "checkpoints", "dfm_macro")
-CKPT_PATH     = os.path.join(CKPT_DIR, f"model-epoch-{cfg.EPOCHS}.pt")
+HEIGHT        = len(TICKERS)
+WIDTH         = 1
+min_dim       = min(HEIGHT, WIDTH)
+DIM_MULTS     = (cfg.DIM_MULTS_LARGE  if min_dim >= 32 else cfg.DIM_MULTS_MEDIUM if min_dim >= 16
+            else cfg.DIM_MULTS_SMALL  if min_dim >= 8  else cfg.DIM_MULTS_TINY   if min_dim >= 4
+            else cfg.DIM_MULTS_MINIMAL)
 RESULTS_DIR   = os.path.join(ROOT, "results")
 
 # ── Data ──────────────────────────────────────────────────────────────────────
@@ -90,7 +101,7 @@ for i, ticker in enumerate(TICKERS):
 
 # ── Plot settings ─────────────────────────────────────────────────────────────
 os.makedirs(RESULTS_DIR, exist_ok=True)
-PLOT_TICKERS = ["sp500", "baa"]
+PLOT_TICKERS = [t for t in TICKERS if t != TICKERS[cfg.H_EVENT_ASSET_IDX]][:2]
 plot_idx     = [TICKERS.index(t) for t in PLOT_TICKERS]
 
 # ── Marginal distributions: rows=assets, cols=train|test ──────────────────────
