@@ -82,7 +82,12 @@ def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, s
     exp_id = f"{config.EXP_PREFIX}_{data_id}_ts{timestamp}_seed{seed}"
     
     # Load data to determine shape and dimensions
-    data_np = np.load(data_path)
+    if data_path.endswith(".csv"):
+        import pandas as pd
+        df_tmp = pd.read_csv(data_path, index_col="Date")
+        data_np = df_tmp[config.TICKERS].dropna().values
+    else:
+        data_np = np.load(data_path)
     data_shape = data_np.shape
     print(f"Loaded data with shape: {data_shape}, dtype: {data_np.dtype}")
 
