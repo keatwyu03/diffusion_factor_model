@@ -273,6 +273,11 @@ def train_model(data_path, seed=None, num_samples=None, gpu_id=0, epochs=None, s
             test_data=test_data,
         )
         h_trainer.save(os.path.join(model_dir, "hfunction.pt"))
+        h_loss_path = os.path.join(model_dir, "h_function_losses.csv")
+        with open(h_loss_path, "w") as f:
+            f.write("epoch,loss,accuracy,pos_ratio\n")
+            for ep, loss, acc, pos_ratio in h_trainer.train_losses:
+                f.write(f"{ep},{loss},{acc},{pos_ratio}\n")
 
     # Generate samples
     print("Generating samples...")

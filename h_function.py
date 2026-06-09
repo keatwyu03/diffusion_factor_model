@@ -117,6 +117,7 @@ class HFunctionTrainer:
         scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=scheduler_factor, patience=scheduler_patience)
         loss_fn = nn.MSELoss()
 
+        self.train_losses = []
         print("Starting H-function training...")
         for epoch in tqdm(range(n_epochs), desc="H-Function Training"):
             idx = torch.randint(0, N, (batch_size,))  # keep on CPU to index train_data
@@ -141,6 +142,7 @@ class HFunctionTrainer:
 
             acc = ((pred > 0.5).float() == target).float().mean().item()
             pos_ratio = target.mean().item()
+            self.train_losses.append((epoch, loss.item(), acc, pos_ratio))
 
             if use_wandb:
                 wandb.log({
