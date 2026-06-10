@@ -53,7 +53,7 @@ DIM_MULTS_TINY = (1, 2)            # For inputs where min_dim >= 4
 DIM_MULTS_MINIMAL = (1,)           # For very small inputs
 
 # Diffusion parameters
-TIMESTEPS = 500
+TIMESTEPS = 200
 OBJECTIVE = 'pred_noise'
 BETA_SCHEDULE = 'cosine'
 AUTO_NORMALIZE = False
