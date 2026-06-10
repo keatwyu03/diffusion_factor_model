@@ -18,8 +18,8 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 os.makedirs(SAMPLES_DIR, exist_ok=True)
 
 # ── Macro data settings ───────────────────────────────────────────────────────
-TICKERS   = ["cpi", "baa", "AAPL", "ORCL", "MSFT", "IBM"]
-COND_EVENT = "cpi"
+TICKERS   = ["baa", "AAPL", "ORCL", "MSFT", "IBM"]
+COND_EVENT = "baa"
 H_EVENT_ASSET_IDX   = 0     # unemp is column 0
 H_EVENT_THRESHOLD   = 2.0   # |unemp change| > value
 CSV_PATH  = os.path.join(PROJECT_ROOT, "explore", "macro_data_new.csv")
